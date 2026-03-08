@@ -350,39 +350,50 @@
 <script>
   const CLOUD_NAME    = 'dsy0s9rsb';
   const UPLOAD_PRESET = 'fotos-lupis';
+  const BIN_ID        = '69adc6c343b1c97be9c1de97';
+  const BIN_KEY       = '$2a$10$bLiS72XpfwWEFRQmZRw2Qu6fDXCyp3XScGCDHm8a8syPVwAZYmWqu';
+  const BIN_URL       = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
-  const fileInput    = document.getElementById('fileInput');
-  const dropZone     = document.getElementById('dropZone');
-  const grid         = document.getElementById('grid');
-  const photoCount   = document.getElementById('photoCount');
-  const progressWrap = document.getElementById('progressWrap');
-  const progressBar  = document.getElementById('progressBar');
-  const progressLabel= document.getElementById('progressLabel');
-  const configNotice = document.getElementById('configNotice');
-  const lightbox     = document.getElementById('lightbox');
-  const lbImg        = document.getElementById('lbImg');
+  const fileInput     = document.getElementById('fileInput');
+  const dropZone      = document.getElementById('dropZone');
+  const grid          = document.getElementById('grid');
+  const photoCount    = document.getElementById('photoCount');
+  const progressWrap  = document.getElementById('progressWrap');
+  const progressBar   = document.getElementById('progressBar');
+  const progressLabel = document.getElementById('progressLabel');
+  const configNotice  = document.getElementById('configNotice');
+  const lightbox      = document.getElementById('lightbox');
+  const lbImg         = document.getElementById('lbImg');
 
   configNotice.style.display = 'none';
 
   let photos = [];
 
-  // ── CARGAR FOTOS DESDE CLOUDINARY ──
-  async function loadFromCloudinary() {
+  // ── CARGAR FOTOS DESDE JSONBIN ──
+  async function loadPhotos() {
     grid.innerHTML = `<div class="empty-state"><div class="big">🌿</div><p>Cargando fotos...</p></div>`;
     try {
-      const res  = await fetch(`https://res.cloudinary.com/${CLOUD_NAME}/image/list/fotos-lupita.json`);
+      const res  = await fetch(BIN_URL + '/latest', {
+        headers: { 'X-Access-Key': BIN_KEY }
+      });
       const data = await res.json();
-      photos = (data.resources || []).map(r => ({
-        url:  `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/q_auto,f_auto/${r.public_id}`,
-        name: r.public_id.replace('fotos-lupita/', ''),
-        date: r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX') : ''
-      })).reverse();
+      photos = data.record?.fotos || [];
       renderGallery();
     } catch(e) {
-      // Si falla (carpeta vacía o no existe aún), mostrar estado vacío
       photos = [];
       renderGallery();
     }
+  }
+
+  // ── GUARDAR LISTA EN JSONBIN ──
+  async function savePhotos() {
+    try {
+      await fetch(BIN_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Access-Key': BIN_KEY },
+        body: JSON.stringify({ fotos: photos })
+      });
+    } catch(e) { console.error('Error guardando lista', e); }
   }
 
   function renderGallery() {
@@ -400,7 +411,7 @@
     photoCount.textContent = photos.length + (photos.length === 1 ? ' foto' : ' fotos');
   }
 
-  // ── UPLOAD ──
+  // ── SUBIR FOTOS ──
   async function uploadFiles(files) {
     const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
     if (!arr.length) return;
@@ -428,6 +439,7 @@
             date: new Date().toLocaleDateString('es-MX')
           });
           renderGallery();
+          await savePhotos();
         }
       } catch(e) { console.error('Error subiendo', file.name, e); }
     }
@@ -484,7 +496,7 @@
   });
 
   // ── INIT ──
-  loadFromCloudinary();
+  loadPhotos();
 </script>
 </body>
 </html>
