@@ -348,13 +348,8 @@
 </div>
 
 <script>
-  // ╔══════════════════════════════════════════╗
-  // ║  CONFIGURA ESTOS DOS VALORES             ║
-  const CLOUD_NAME    = 'dsy0s9rsb';   // ← cámbialo
-  const UPLOAD_PRESET = 'fotos-lupis'; // ← cámbialo
-  // ╚══════════════════════════════════════════╝
-
-  const CONFIGURED = !CLOUD_NAME.startsWith('TU_');
+  const CLOUD_NAME    = 'dsy0s9rsb';
+  const UPLOAD_PRESET = 'TU_UPLOAD_PRESET'; // ← solo cambia esto si aún no lo pusiste
 
   const fileInput    = document.getElementById('fileInput');
   const dropZone     = document.getElementById('dropZone');
@@ -367,13 +362,28 @@
   const lightbox     = document.getElementById('lightbox');
   const lbImg        = document.getElementById('lbImg');
 
-  if (CONFIGURED) configNotice.style.display = 'none';
+  configNotice.style.display = 'none';
 
-  // ── STORAGE KEY ──
-  const STORAGE_KEY = 'lupita_photos';
-  let photos = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  let photos = [];
 
-  function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(photos)); }
+  // ── CARGAR FOTOS DESDE CLOUDINARY ──
+  async function loadFromCloudinary() {
+    grid.innerHTML = `<div class="empty-state"><div class="big">🌿</div><p>Cargando fotos...</p></div>`;
+    try {
+      const res  = await fetch(`https://res.cloudinary.com/${CLOUD_NAME}/image/list/fotos-lupita.json`);
+      const data = await res.json();
+      photos = (data.resources || []).map(r => ({
+        url:  `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/q_auto,f_auto/${r.public_id}`,
+        name: r.public_id.replace('fotos-lupita/', ''),
+        date: r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX') : ''
+      })).reverse();
+      renderGallery();
+    } catch(e) {
+      // Si falla (carpeta vacía o no existe aún), mostrar estado vacío
+      photos = [];
+      renderGallery();
+    }
+  }
 
   function renderGallery() {
     if (photos.length === 0) {
@@ -392,10 +402,6 @@
 
   // ── UPLOAD ──
   async function uploadFiles(files) {
-    if (!CONFIGURED) {
-      alert('⚙️ Primero configura tu Cloud Name y Upload Preset de Cloudinary.\nVer el aviso amarillo en la página.');
-      return;
-    }
     const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
     if (!arr.length) return;
 
@@ -405,7 +411,7 @@
     for (let i = 0; i < arr.length; i++) {
       const file = arr[i];
       progressLabel.textContent = `Subiendo ${i + 1} de ${arr.length}: ${file.name}`;
-      progressBar.style.width = Math.round(((i) / arr.length) * 100) + '%';
+      progressBar.style.width = Math.round((i / arr.length) * 100) + '%';
 
       const fd = new FormData();
       fd.append('file', file);
@@ -416,8 +422,11 @@
         const res  = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd });
         const data = await res.json();
         if (data.secure_url) {
-          photos.unshift({ url: data.secure_url, name: file.name.replace(/\.[^.]+$/, ''), date: new Date().toLocaleDateString('es-MX') });
-          save();
+          photos.unshift({
+            url:  `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/q_auto,f_auto/${data.public_id}`,
+            name: file.name.replace(/\.[^.]+$/, ''),
+            date: new Date().toLocaleDateString('es-MX')
+          });
           renderGallery();
         }
       } catch(e) { console.error('Error subiendo', file.name, e); }
@@ -433,7 +442,6 @@
   }
 
   fileInput.addEventListener('change', e => uploadFiles(e.target.files));
-
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
   dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); uploadFiles(e.dataTransfer.files); });
@@ -476,7 +484,7 @@
   });
 
   // ── INIT ──
-  renderGallery();
+  loadFromCloudinary();
 </script>
 </body>
 </html>
