@@ -172,6 +172,29 @@
       padding: 0.2em 0.7em;
       border-radius: 99px;
     }
+    .capacity-wrap {
+      margin-bottom: 1.5rem;
+    }
+    .capacity-bar-bg {
+      background: var(--sand);
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+      width: 100%;
+      max-width: 320px;
+    }
+    .capacity-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #85c17e, #c4845a);
+      transition: width 0.6s ease;
+    }
+    .capacity-label {
+      font-size: 0.78rem;
+      color: var(--terra);
+      margin-top: 0.35rem;
+    }
+    .capacity-label.warn { color: #b85c2a; font-weight: 700; }
 
     .grid {
       display: grid;
@@ -331,6 +354,12 @@
     <h2>Mi galería</h2>
     <span class="photo-count" id="photoCount">0 fotos</span>
   </div>
+  <div class="capacity-wrap">
+    <div class="capacity-bar-bg">
+      <div class="capacity-bar-fill" id="capacityFill" style="width:0%"></div>
+    </div>
+    <p class="capacity-label" id="capacityLabel">Calculando espacio...</p>
+  </div>
   <div class="grid" id="grid">
     <div class="empty-state">
       <div class="big">🌻</div>
@@ -409,6 +438,29 @@
         el.addEventListener('click', () => openLightbox(+el.dataset.index)));
     }
     photoCount.textContent = photos.length + (photos.length === 1 ? ' foto' : ' fotos');
+    updateCapacity();
+  }
+
+  // ── INDICADOR DE CAPACIDAD ──
+  function updateCapacity() {
+    const MAX_BYTES = 100 * 1024; // 100 KB límite JSONbin
+    const jsonSize  = new Blob([JSON.stringify({ fotos: photos })]).size;
+    const pct       = Math.min((jsonSize / MAX_BYTES) * 100, 100);
+    const remaining = Math.max(0, Math.floor((MAX_BYTES - jsonSize) / 200));
+
+    document.getElementById('capacityFill').style.width = pct.toFixed(1) + '%';
+    const label = document.getElementById('capacityLabel');
+
+    if (pct >= 90) {
+      label.textContent = '⚠️ ¡Casi lleno! Quedan aprox. ' + remaining + ' fotos';
+      label.className = 'capacity-label warn';
+    } else if (pct >= 70) {
+      label.textContent = '🟠 ' + remaining + ' fotos más disponibles (' + pct.toFixed(0) + '% usado)';
+      label.className = 'capacity-label warn';
+    } else {
+      label.textContent = '🟢 ' + remaining + ' fotos más disponibles (' + pct.toFixed(0) + '% usado)';
+      label.className = 'capacity-label';
+    }
   }
 
   // ── SUBIR FOTOS ──
