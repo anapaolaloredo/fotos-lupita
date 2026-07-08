@@ -1,2 +1,4 @@
-# fotos-lupita
-Website para galeria de fotos para mi mamá
+# Personal Photo Gallery For Lupita
+Website for the documenting of my mom's favorite pictures.
+
+
